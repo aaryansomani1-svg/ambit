@@ -496,6 +496,10 @@ input::placeholder,textarea::placeholder{color:var(--ink-subtle)}
 .mk-r{fill:var(--canvas);stroke:var(--ink);stroke-width:2}
 .mk-t{font-family:var(--mono);font-size:9px;font-weight:600;fill:var(--canvas);text-anchor:middle;dominant-baseline:central}
 .mk-on .mk-i{fill:var(--primary)} .mk-on .mk-r{stroke:var(--primary)}
+.mk-na{opacity:.22}
+.tag.na{color:var(--ink-subtle);background:var(--surface-1)}
+.natoggle{font-size:12px;color:var(--primary);background:none;border:0;padding:0;cursor:pointer}
+.natoggle:hover{text-decoration:underline}
 .mx-key{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12px;color:var(--ink-subtle);letter-spacing:.32px}
 .mx-key i{font-style:normal;display:inline-flex;align-items:center;gap:6px}
 .sw{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
@@ -1146,13 +1150,34 @@ function residualOf(r){
   var score = Math.round(lRes * r.s * 10) / 10;
   return {inh:inh, lRes:lRes, score:score, band:bandOf(score), cov:cov, forced:false};
 }
+/* A risk can fall away on the facts: there is no cross-border risk if nothing
+   crosses a border. Such risks stay in the register, marked and explained, but
+   never drive the headline, the Art 36 test or the coverage gap. */
+function riskNA(r){
+  if(r.na) return "Marked not applicable by the assessor";
+  if(r.theme === "crossborder" && val("xborder") === "no") return "Not applicable: no cross-border transfer (section 3)";
+  if(r.theme === "processor" && val("processors") === "no") return "Not applicable: no processor engaged (section 3)";
+  return "";
+}
+function liveRisks(){ return S.risks.filter(function(r){ return !riskNA(r); }); }
 function maxResidualBand(){
   var m = 0;
-  S.risks.forEach(function(r){ var b = residualOf(r).band; if(b > m) m = b; });
+  liveRisks().forEach(function(r){ var b = residualOf(r).band; if(b > m) m = b; });
   return m;
 }
 function orphanRisks(){
-  return S.risks.filter(function(r){ return riskCoverage(r).orphan; });
+  return liveRisks().filter(function(r){ return riskCoverage(r).orphan; });
+}
+/* Every applicable risk sharing the top band and score. A tie is reported as a
+   tie, not settled by whichever risk happens to come first in the register. */
+function topRisks(){
+  var top = [], best = null;
+  liveRisks().forEach(function(r){
+    var res = residualOf(r), sc = res.score === null ? res.band * 4 : res.score;
+    if(!best || res.band > best.band || (res.band === best.band && sc > best.sc + 1e-9)){ best = {band:res.band, sc:sc, res:res}; top = [r]; }
+    else if(res.band === best.band && Math.abs(sc - best.sc) < 1e-9) top.push(r);
+  });
+  return best ? {risks:top, res:best.res} : null;
 }
 
 /* ---------------- completeness ---------------- */
@@ -1188,7 +1213,7 @@ var SECTORS = {
   banking: {t:"Banking and lending", items:[
     "Prevention of Money-laundering Act 2002, s 12, with the PML (Maintenance of Records) Rules 2005: transaction records kept for five years from the transaction, and identity records for five years after the business relationship ends or the account is closed, whichever is later.",
     "RBI Master Direction on Know Your Customer 2016: KYC records preserved for the PMLA periods and produced to competent authorities on request.",
-    "This is retention required by law, so it displaces erasure under s 8(7) for as long as it runs. Record it as the retention trigger below."]},
+    "Retention required by law displaces erasure under s 8(7) of the DPDP Act for as long as it runs."]},
   payments: {t:"Payment systems", items:[
     "RBI direction on storage of payment system data, 6 April 2018: the entire data relating to payment systems run by a system provider must be stored in systems located only in India.",
     "RBI FAQs, 2019: data may be processed abroad, but must then be deleted there and brought back to India within one business day or 24 hours of payment processing, whichever is earlier.",
@@ -1197,12 +1222,12 @@ var SECTORS = {
   securities: {t:"Securities markets", items:[
     "SEBI registered intermediaries are reporting entities under the PMLA, so its s 12 record retention applies: five years, as for banks.",
     "SEBI Cybersecurity and Cyber Resilience Framework 2024: baseline security, log retention and incident reporting for regulated entities, scaled by category.",
-    "Record retention under the intermediary regulations themselves varies by registration category. Check the regulations for yours."]},
+    "Record retention under the intermediary regulations themselves varies by registration category."]},
   insurance: {t:"Insurance", items:[
     "Insurers are reporting entities under the PMLA, so its s 12 record retention applies.",
-    "IRDAI regulations on maintenance of insurance records, and its information and cyber security guidelines, add retention and security requirements. Check the current versions."]},
+    "IRDAI regulations on maintenance of insurance records, and its information and cyber security guidelines, add retention and security requirements."]},
   telecom: {t:"Telecommunications", items:[
-    "Licence conditions issued by the Department of Telecommunications require retention of commercial and call detail records and certain logs for the period the licence sets, extended to two years by amendment in 2021. Check your licence.",
+    "Licence conditions issued by the Department of Telecommunications require retention of commercial and call detail records and certain logs for the period the licence sets, extended to two years by amendment in 2021.",
     "The Telecommunications Act 2023 and the rules under it may add obligations as they are notified."]}
 };
 
@@ -1270,6 +1295,13 @@ function preflight(){
     if(!a.due) m(7, "Due date for action " + (i + 1));
   });
   if(!txt("signName")) m(7, "Approved by");
+  [["adate", 0, "Date of assessment"], ["signDate", 7, "Date of approval"], ["nextDate", 7, "Next scheduled review"]].forEach(function(d){
+    var v = val(d[0]);
+    if(v && !/^(19|20|21)\d\d-/.test(v)) c(d[1], d[2] + " reads " + v + ", which looks mistyped. Check the year.");
+  });
+  acts.forEach(function(a, i){
+    if(a.due && !/^(19|20|21)\d\d-/.test(a.due)) c(7, "Due date for action " + (i + 1) + " reads " + a.due + ", which looks mistyped. Check the year.");
+  });
 
   var pctl = on("pcontract") || on("art28");
   if(val("processors") === "yes" && (val("pcontract") === "no" || val("pcontract") === "partial") && pctl)
@@ -1384,9 +1416,10 @@ function matrixMarks(){
       dx = Math.cos(a) * rad; dy = Math.sin(a) * rad * .8;
     }
     var res = residualOf(r);
-    marks.push({i:i, r:r, res:res,
+    var na = riskNA(r);
+    marks.push({i:i, r:r, res:res, na:na,
       x:(r.l - .5) * cw + dx, y:(4 - r.s + .5) * ch + dy,
-      rx:(res.lRes - .5) * cw + dx, moved:res.lRes !== r.l && !res.forced});
+      rx:(res.lRes - .5) * cw + dx, moved:!na && Math.abs(res.lRes - r.l) > 0.01 && !res.forced});
   });
   return marks;
 }
@@ -1404,7 +1437,7 @@ function renderMatrix(live){
   }
   var svg = '<svg class="marks" viewBox="0 0 400 336" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
   matrixMarks().forEach(function(m){
-    svg += '<g class="' + (live && m.i === S.sel ? "mk-on" : "") + '"><title>' + esc((m.i + 1) + ". " + m.r.name) + '</title>';
+    svg += '<g class="' + (live && m.i === S.sel ? "mk-on" : "") + (m.na ? " mk-na" : "") + '"><title>' + esc((m.i + 1) + ". " + m.r.name + (m.na ? " (" + m.na + ")" : "")) + '</title>';
     if(m.moved){
       svg += '<line class="mk-l" x1="' + m.x.toFixed(1) + '" y1="' + m.y.toFixed(1) + '" x2="' + m.rx.toFixed(1) + '" y2="' + m.y.toFixed(1) + '"/>' +
              '<circle class="mk-r" cx="' + m.rx.toFixed(1) + '" cy="' + m.y.toFixed(1) + '" r="8"/>';
@@ -1523,6 +1556,8 @@ function vDescribe(){
          ["securities", "Securities (SEBI)"], ["insurance", "Insurance (IRDAI)"], ["telecom", "Telecom (DoT)"]],
         "s 16(2); s 8(7)", "Sector law can override the DPDP defaults on how long data is kept and where it may be stored.") +
       (sec ? notif(sec.t, "<ul style=\"margin:4px 0 0;padding-left:18px\">" + sec.items.map(function(x){ return "<li style=\"margin-bottom:6px\">" + x + "</li>"; }).join("") + "</ul>" +
+        (val("sector") === "banking" || val("sector") === "payments" || val("sector") === "securities" || val("sector") === "insurance"
+          ? "<p style=\"margin-top:8px\">If one of these periods governs this activity, enter it as the retention trigger below.</p>" : "") +
         "<p style=\"margin-top:8px\"><b>Checklist, not a citation.</b> These sector rules were written without the source instruments in this project and have not been checked against them. Verify each against the current text before relying on it.</p>") : ""));
   }
 
@@ -1634,11 +1669,15 @@ function vRisks(){
         THEMES.map(function(t){ return '<option value="' + t[0] + '"' + (r.theme === t[0] ? " selected" : "") + '>' + esc(t[1]) + '</option>'; }).join("") +
         '</select>' +
         '<span class="f">L<b>' + r.l + '</b> S<b>' + r.s + '</b> = <b>' + (r.l * r.s) + '</b></span>' +
-        '<span class="f">residual <b>' + fmtScore(res.score) + '</b></span>' +
-        '<span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span>' +
-        (cov.orphan ? "" : '<span class="f">' + cov.n + "/" + cov.d + ' mapped</span>') +
+        (riskNA(r)
+          ? '<span class="tag na">Not applicable</span>'
+          : '<span class="f">residual <b>' + fmtScore(res.score) + '</b></span>' +
+            '<span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span>' +
+            (cov.orphan ? "" : '<span class="f">' + cov.n + "/" + cov.d + ' mapped</span>')) +
+        ((riskNA(r) && !r.na) ? "" : '<button type="button" class="natoggle" data-rna="' + i + '">' + (r.na ? "Mark applicable" : "Mark not applicable") + '</button>') +
         '</div>' +
-        (cov.orphan ? '<div class="gap">' + ic("warning") + '<span>No control in scope addresses this risk. It cannot be mitigated by anything on the control list, so say so in the report.</span></div>' : "") +
+        (riskNA(r) ? '<p class="help" style="margin-top:6px">' + esc(riskNA(r)) + '. Left out of the headline risk and the Art 36 test.</p>' :
+          (cov.orphan ? '<div class="gap">' + ic("warning") + '<span>No control in scope addresses this risk. It cannot be mitigated by anything on the control list, so say so in the report.</span></div>' : "")) +
         '</div>' +
         '<button type="button" class="icon-btn" data-rdel="' + i + '" aria-label="Delete risk ' + (i + 1) + '" title="Delete">' + ic("delete") + '</button>' +
         '</div>';
@@ -1705,8 +1744,8 @@ function vOutcome(){
   S.risks.forEach(function(r, i){
     var res = residualOf(r);
     h += '<tr><td>' + esc(r.name) + '</td><td style="font-size:12px;color:var(--ink-subtle)">' + esc(THEME_NAME[r.theme] || "-") + '</td>' +
-      '<td class="n">' + res.inh + '</td><td class="n">' + fmtScore(res.score) + '</td>' +
-      '<td><span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span></td>' +
+      '<td class="n">' + res.inh + '</td><td class="n">' + (riskNA(r) ? "-" : fmtScore(res.score)) + '</td>' +
+      '<td>' + (riskNA(r) ? '<span class="tag na" title="' + esc(riskNA(r)) + '">Not applicable</span>' : '<span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span>') + '</td>' +
       '<td><select data-risk="' + i + '" data-rf="ov" aria-label="Override band for risk ' + (i + 1) + '" style="width:auto;font-size:12px;padding:5px 30px 5px 10px;background-position:calc(100% - 16px) 13px,calc(100% - 11px) 13px">' +
       '<option value=""' + (!r.ov ? " selected" : "") + '>auto</option>' +
       [1, 2, 3, 4].map(function(b){
@@ -1846,7 +1885,7 @@ function renderRail(){
   if(S.risks.length){
     h += '<div class="det ' + (mb >= 3 ? "req" : "no") + '"><p class="dl">Highest residual</p>' +
       '<p class="dv"><span class="tag b' + mb + '">' + BAND_NAME[mb] + '</span></p>' +
-      '<p class="dn">' + S.risks.length + ' risk' + (S.risks.length === 1 ? "" : "s") + ' in the register.' +
+      '<p class="dn">' + liveRisks().length + ' of ' + S.risks.length + ' risk' + (S.risks.length === 1 ? "" : "s") + ' applicable.' +
       (orphanRisks().length ? " " + orphanRisks().length + " unmitigated by anything in scope." : "") + '</p></div>';
     if(mb >= 3 && val("rGDPR")){
       h += det("req", "Article 36", "Consultation required", "Consult the supervisory authority before processing, or mitigate until the residual falls.");
@@ -1983,6 +2022,9 @@ document.addEventListener("input", function(e){
   }
   if(t.dataset.acti !== undefined){ setAction(t); return; }
   if(!t.dataset.k) return;
+  if(t.tagName === "INPUT" && t.type === "date"){
+    S.v[t.dataset.k] = t.value; save(); liveRefresh(); return;
+  }
   if(t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && t.type === "text")){
     S.v[t.dataset.k] = t.value;
     save(); renderSide(); liveRefresh();
@@ -1993,7 +2035,13 @@ document.addEventListener("change", function(e){
   var t = e.target;
   if(!t || !t.dataset) return;
   if(t.dataset.acti !== undefined){ setAction(t); return; }
-  if(t.dataset.k && (t.tagName === "SELECT" || t.type === "date")){
+  /* Dates never drive branching, so they are saved without rebuilding the page.
+     Rebuilding here used to steal focus after the first digit of the year, so
+     typing 03102027 saved 0002-10-03 and the rest of the year went nowhere. */
+  if(t.dataset.k && t.type === "date"){
+    S.v[t.dataset.k] = t.value; save(); liveRefresh(); return;
+  }
+  if(t.dataset.k && t.tagName === "SELECT"){
     S.v[t.dataset.k] = t.value; save(); refresh(); return;
   }
   if(t.dataset.risk !== undefined && t.dataset.rf){
@@ -2005,7 +2053,7 @@ document.addEventListener("change", function(e){
 document.addEventListener("click", function(e){
   var tg = e.target;
   if(tg && (tg.tagName === "SELECT" || tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return;
-  var t = tg.closest ? tg.closest("[data-radio],[data-bool],[data-chip],[data-ck],[data-cell],[data-rsel],[data-rdel],[data-actdel],[data-act],[data-jump],button") : null;
+  var t = tg.closest ? tg.closest("[data-radio],[data-bool],[data-chip],[data-ck],[data-cell],[data-rsel],[data-rdel],[data-rna],[data-actdel],[data-act],[data-jump],button") : null;
   if(!t) return;
   var d = t.dataset || {}, fid = t.id || null;
 
@@ -2022,6 +2070,12 @@ document.addEventListener("click", function(e){
     var p = d.cell.split(",");
     S.risks[S.sel].l = Number(p[0]); S.risks[S.sel].s = Number(p[1]);
     save(); refresh(); return;
+  }
+  if(d.rna !== undefined){
+    e.stopPropagation();
+    var rr = S.risks[Number(d.rna)];
+    if(rr){ rr.na = !rr.na; save(); refresh(); }
+    return;
   }
   if(d.rsel !== undefined){ S.sel = Number(d.rsel); refresh(); return; }
   if(d.rdel !== undefined){
@@ -2070,7 +2124,12 @@ document.addEventListener("click", function(e){
     case "btnDocx": exportDOCX(); break;
     case "btnMd": exportMD(); break;
     case "btnJson": exportJSON(); break;
-    case "btnPrint": window.print(); break;
+    case "btnPrint":
+      syncFromDom();
+      var pvP = $("#reportPreview");
+      if(pvP) pvP.innerHTML = renderHTML(buildReport());
+      window.print();
+      break;
   }
 });
 
@@ -2620,15 +2679,16 @@ function buildReport(){
 
   /* One page that answers what a reader needs first: where it landed, the
      worst residual, whether Art 36 bites, and who owns what by when. */
-  var dv = dpdpVerdict(), gv = gdprVerdict(), pf = preflight(), mbS = maxResidualBand(), worst = null;
-  S.risks.forEach(function(r){
-    var rs = residualOf(r);
-    if(!worst || rs.band > worst.res.band || (rs.band === worst.res.band && (rs.score || 0) > (worst.res.score || 0))) worst = {r:r, res:rs};
-  });
+  var dv = dpdpVerdict(), gv = gdprVerdict(), pf = preflight(), mbS = maxResidualBand(), worst = topRisks();
+  var worstTxt = !S.risks.length ? "No risks recorded"
+    : !worst ? "No applicable risk: every risk in the register is marked not applicable"
+    : BAND_NAME[worst.res.band] + " (" + fmtScore(worst.res.score) + "): " +
+      (worst.risks.length === 1 ? worst.risks[0].name
+        : worst.risks.length + " risks tie at this score: " + worst.risks.map(function(r){ return r.name; }).join("; "));
   n.push({t:"h", text:"Summary"});
   n.push({t:"kv", rows:[
     ["Outcome", DECISION[val("decision")] || "Not answered"],
-    ["Highest residual risk", worst ? BAND_NAME[worst.res.band] + " (" + fmtScore(worst.res.score) + "): " + worst.r.name : "No risks recorded"],
+    ["Highest residual risk", worstTxt],
     ["Art 36 prior consultation", !val("rGDPR") ? "GDPR not in scope" : (mbS >= 3 ? "Engaged. A residual risk is High or above, so the supervisory authority must be consulted before processing." : "Not engaged on these figures")],
     ["DPDP assessment duty", dv ? dv.stamp : "DPDP not in scope"],
     ["GDPR assessment duty", gv ? gv.stamp : "GDPR not in scope"],
@@ -2655,17 +2715,17 @@ function buildReport(){
 
   n.push({t:"h", text:"1. Assessment details"});
   n.push({t:"kv", rows:[
-    ["Data Fiduciary / Controller", or(txt("entity"), "-")],
-    ["Processing activity", or(txt("activity"), "-")],
-    ["Assessor", or(txt("assessor"), "-") + (txt("role") ? ", " + txt("role") : "")],
+    ["Data Fiduciary / Controller", or(txt("entity"), "Not stated")],
+    ["Processing activity", or(txt("activity"), "Not stated")],
+    ["Assessor", or(txt("assessor"), "Not stated") + (txt("role") ? ", " + txt("role") : "")],
     ["Date of assessment", today],
-    ["Regimes applied", regimes.join(" and ") || "-"]
+    ["Regimes applied", regimes.join(" and ") || "None selected"]
   ]});
 
   n.push({t:"h", text:"2. Threshold"});
   if(dv){
     n.push({t:"verdict", title:dv.who + " - " + dv.stamp + ". " + dv.title, text:dv.body});
-    n.push({t:"kv", rows:[["Notified as a Significant Data Fiduciary", YN[val("sdf")] || "-"]]});
+    n.push({t:"kv", rows:[["Notified as a Significant Data Fiduciary", YN[val("sdf")] || "Not answered"]]});
     var f = labelsFor(F10, "f10");
     if(f.length){ n.push({t:"h3", text:"Section 10(1) factors recorded as present"}); n.push({t:"list", items:f}); }
   }
@@ -2682,10 +2742,10 @@ function buildReport(){
   n.push({t:"h3", text:"Purpose"});
   n.push({t:"p", text:or(txt("purpose"), "Not stated.")});
   n.push({t:"kv", rows:[
-    ["Categories of data", listOr("cats", "-")],
-    ["Categories of principals", listOr("subs", "-")],
-    ["Volume", or(txt("volume"), "-")],
-    ["Source", or(txt("source"), "-")],
+    ["Categories of data", listOr("cats", "Not stated")],
+    ["Categories of principals", listOr("subs", "Not stated")],
+    ["Volume", or(txt("volume"), "Not stated")],
+    ["Source", or(txt("source"), "Not stated")],
     ["Processors engaged", YN[val("processors")] || "Not answered"],
     ["Processor contract in place", val("processors") === "yes" ? (YN[val("pcontract")] || "Not answered") : "Not applicable"],
     ["Recipients", or(txt("recipients"), "Not stated")],
@@ -2770,10 +2830,16 @@ function buildReport(){
       head:["#", "Risk", "Theme", "L", "S", "Inherent", "Mapped controls", "Residual", "Band"],
       rows:S.risks.map(function(r, i){
         var res = residualOf(r);
+        if(riskNA(r)) return [String(i + 1), r.name, THEME_NAME[r.theme] || "-", String(r.l), String(r.s), String(res.inh), "-", "-", "Not applicable"];
         return [String(i + 1), r.name, THEME_NAME[r.theme] || "-", String(r.l), String(r.s), String(res.inh),
                 res.cov.orphan ? "none in scope" : (res.cov.n + " of " + res.cov.d),
                 res.score === null ? "set manually" : fmtScore(res.score), BAND_NAME[res.band]];
       })});
+    var naR = S.risks.map(function(r, i){ return riskNA(r) ? "Risk " + (i + 1) + ": " + riskNA(r) + "." : ""; }).filter(Boolean);
+    if(naR.length){
+      n.push({t:"h3", text:"Risks not applicable on these facts"});
+      n.push({t:"list", items:naR});
+    }
   } else {
     n.push({t:"p", text:"No risks recorded."});
   }
@@ -3090,6 +3156,8 @@ function renderPDF(nodes){
     y += h + 5;
   }
   function table(head, rows, kv){
+    /* Never start a table with only its header room left on the page. */
+    if(y + 22 > BOT){ doc.addPage(); y = M; }
     var styles = {
       font:"helvetica", fontSize:7.6, cellPadding:1.7, overflow:"linebreak",
       textColor:INK, lineColor:LINE, lineWidth:0.1, valign:"top"
@@ -3114,7 +3182,10 @@ function renderPDF(nodes){
     y = doc.lastAutoTable.finalY + 4;
   }
 
-  nodes.forEach(function(d){
+  nodes.forEach(function(d, ix){
+    /* Keep a heading with what follows it: room for the heading plus the first
+       rows of a table, or the first lines of text. */
+    var nx = nodes[ix + 1], keep = !nx ? 0 : (nx.t === "table" || nx.t === "kv") ? 26 : (nx.t === "list" || nx.t === "p" || nx.t === "verdict") ? 14 : 0;
     if(d.t === "title"){
       need(16);
       para(d.text, 19, "bold", INK, 0, 1);
@@ -3125,14 +3196,14 @@ function renderPDF(nodes){
     } else if(d.t === "advisory"){
       advisoryBox(d.title, d.text);
     } else if(d.t === "h"){
-      need(14);
+      need(14 + keep);
       y += 3.5;
       para(d.text, 11, "bold", ACC, 0, 1.2);
       doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.2);
       doc.line(M, y, M + W, y);
       y += 3;
     } else if(d.t === "h3"){
-      need(10);
+      need(10 + keep);
       y += 1.8;
       para(d.text, 9.2, "bold", INK, 0, 1.2);
     } else if(d.t === "p"){
@@ -3268,7 +3339,26 @@ function saveFile(filename, data){
     toast("Could not save that file. Print / Save as PDF still works.");
   }
 }
+/* Pull every visible field into state before exporting. If an input event was
+   ever missed, the export still matches what is on screen. */
+function syncFromDom(){
+  Array.prototype.forEach.call(document.querySelectorAll("#doc [data-k]"), function(el){
+    if(el.tagName === "TEXTAREA" || el.tagName === "SELECT" || (el.tagName === "INPUT" && (el.type === "text" || el.type === "date"))){
+      S.v[el.dataset.k] = el.value;
+    }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#doc [data-ev]"), function(el){
+    (S.v.evidence || (S.v.evidence = {}))[el.dataset.ev] = el.value;
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#doc [data-acti]"), function(el){
+    var a = (S.v.actions || [])[Number(el.dataset.acti)];
+    if(a) a[el.dataset.actf] = el.value;
+  });
+  save();
+}
+
 function exportPDF(){
+  syncFromDom();
   if(!pdfReady()){ toast("The PDF engine did not load. Use Print / Save as PDF instead."); return; }
   var doc;
   try {
@@ -3280,9 +3370,9 @@ function exportPDF(){
   if(!doc){ toast("The PDF engine did not load. Use Print / Save as PDF instead."); return; }
   saveFile(fileStem() + ".pdf", doc.output("blob"));
 }
-function exportMD(){ saveFile(fileStem() + ".md", renderMD(buildReport())); }
-function exportJSON(){ saveFile(fileStem() + "-draft.json", JSON.stringify({v:S.v, risks:S.risks, step:S.step}, null, 2)); }
-function exportDOCX(){ saveFile(fileStem() + ".docx", renderDOCX(buildReport())); }
+function exportMD(){ syncFromDom(); saveFile(fileStem() + ".md", renderMD(buildReport())); }
+function exportJSON(){ syncFromDom(); saveFile(fileStem() + "-draft.json", JSON.stringify({v:S.v, risks:S.risks, step:S.step}, null, 2)); }
+function exportDOCX(){ syncFromDom(); saveFile(fileStem() + ".docx", renderDOCX(buildReport())); }
 
 document.addEventListener("change", function(e){
   if(e.target && e.target.id === "fileIn" && e.target.files && e.target.files[0]){
