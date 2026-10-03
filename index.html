@@ -385,27 +385,59 @@ input::placeholder,textarea::placeholder{color:var(--ink-subtle)}
 .tile:hover{background:var(--surface-1);color:var(--ink)}
 .tile[aria-pressed="true"]{background:var(--surface-1);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 2px var(--primary)}
 .tile.sens[aria-pressed="true"]::after{content:"";position:absolute;top:6px;right:6px;width:5px;height:5px;background:var(--b3)}
+.tile.hp[aria-pressed="true"]::after{content:"";position:absolute;top:6px;right:6px;width:5px;height:5px;background:var(--b2)}
 
-/* Carbon checkbox rows carrying their provision */
+/* Carbon checkbox rows carrying their provision.
+   The citation sits beside the checkbox button, never inside it: the glossary
+   turns citations into buttons, and a button inside a button is invalid and
+   swallowed clicks meant for the checkbox. */
 .checks{border:1px solid var(--hairline)}
-.ck{
-  display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:14px;align-items:start;
-  width:100%;text-align:left;padding:14px 16px;cursor:pointer;background:var(--canvas);
-  border:0;border-bottom:1px solid var(--hairline);
+.ckrow{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;
+  background:var(--canvas);border-bottom:1px solid var(--hairline);
 }
-.ck:last-child{border-bottom:0}
-.ck:hover{background:var(--surface-1)}
+.ckrow:last-child{border-bottom:0}
+.ckrow:hover{background:var(--surface-1)}
+.ckrow > .ct{white-space:nowrap;padding:15px 16px 0 8px}
+.ck{
+  display:grid;grid-template-columns:18px minmax(0,1fr);gap:14px;align-items:start;
+  width:100%;text-align:left;padding:14px 0 14px 16px;cursor:pointer;background:transparent;border:0;
+}
+.evid{grid-column:1 / -1;padding:0 16px 14px 48px}
+.evid .lbl{margin-bottom:4px}
+.evid input{font-size:13px;padding:8px 12px}
 .ck .box{width:16px;height:16px;border:1px solid var(--ink-muted);background:transparent;display:grid;place-items:center;margin-top:2px}
 .ck[aria-pressed="true"] .box{background:var(--primary);border-color:var(--primary)}
 .ck .box .ms{font-size:14px;color:var(--on-primary);opacity:0}
 .ck[aria-pressed="true"] .box .ms{opacity:1}
 .ck .tx{font-size:14px;line-height:1.45;color:var(--ink-muted)}
 .ck[aria-pressed="true"] .tx{color:var(--ink)}
-.ck .ct{white-space:nowrap;padding-top:1px}
 @media (max-width:672px){
-  .ck{grid-template-columns:18px minmax(0,1fr)}
-  .ck .ct{grid-column:2;padding-top:4px}
+  .ckrow{grid-template-columns:minmax(0,1fr)}
+  .ckrow > .ct{padding:0 16px 12px 48px}
+  .evid{padding-left:48px}
 }
+
+/* structured actions table */
+.actrow{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.1fr) 150px 40px;gap:1px;background:var(--hairline);border:1px solid var(--hairline);border-top:0}
+.actrow:first-child{border-top:1px solid var(--hairline)}
+.actrow input{border-bottom:0}
+.acthead{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.1fr) 150px 40px;gap:1px;font-size:12px;letter-spacing:.32px;color:var(--ink-subtle);padding:0 0 6px}
+@media (max-width:672px){.actrow,.acthead{grid-template-columns:minmax(0,1fr) 40px}.actrow input:not(:first-child){grid-column:1}.acthead span:not(:first-child){display:none}}
+
+/* pre-export check */
+.pre{border:1px solid var(--hairline);margin-bottom:20px}
+.pre-h{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface-1);border-bottom:1px solid var(--hairline);font-size:14px;font-weight:600}
+.pre-h .ms{font-size:18px}
+.pre.ok .pre-h{color:var(--b1)}
+.pre ul{margin:0;padding:0;list-style:none}
+.pre li{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:10px 16px;border-bottom:1px solid var(--hairline);font-size:13.5px;line-height:1.45}
+.pre li:last-child{border-bottom:0}
+.pre .kind{font-size:11px;letter-spacing:.32px;font-weight:600}
+.pre .kind.c{color:var(--b4)} .pre .kind.m{color:var(--b2)}
+.pre .go{font-size:12px;color:var(--primary);background:none;border:0;cursor:pointer;padding:0;white-space:nowrap}
+.pre .go:hover{text-decoration:underline}
+@media (max-width:672px){.pre li{grid-template-columns:minmax(0,1fr)}}
 
 /* ---------- determination: the live outputs ---------- */
 .rail{
@@ -805,14 +837,15 @@ var S = {
     sdf:"unsure", f10:[],
     a35:[], wp:[],
     descr:"", purpose:"", cats:[], subs:[], volume:"", source:"",
-    processors:"no", pnames:"", pcontract:"no",
-    recipients:"", retention:"", thirdsched:"no",
-    xborder:"no", xdest:"", xmech:"",
+    processors:"", pnames:"", pcontract:"",
+    recipients:"", retention:"", thirdsched:"", sector:"",
+    xborder:"", xdest:"", xmech:"",
     basis:"", s7clause:"", notice:[], consent:[],
-    gbasis:"", gart9:"", darkpat:"no",
+    gbasis:"", gart9:"", darkpat:"",
     nec:"", alt:"", minim:"", expect:"",
-    controls:[],
-    decision:"", conditions:"",
+    controls:[], evidence:{},
+    dpoAdvice:"", subjectViews:"",
+    decision:"", conditions:"", actions:[],
     signName:"", signRole:"", signDate:"", nextDate:""
   },
   risks: []
@@ -896,8 +929,18 @@ var WP = [
   ["bar",   "Processing that prevents data subjects from exercising a right or using a service or contract", "WP248 §9"]
 ];
 
-var CATS = ["Name and identifiers","Contact details","Financial / payment","Government-issued ID","Biometric","Health","Precise location","Device and online identifiers","Behavioural / usage","Employment and HR","Communications content","Images and video","Inferred or derived"];
-var SENSITIVE_CATS = ["Financial / payment","Government-issued ID","Biometric","Health","Precise location","Communications content"];
+var CATS = ["Name and identifiers","Contact details","Financial / payment","Government-issued ID","Precise location","Device and online identifiers","Behavioural / usage","Employment and HR","Communications content","Images and video","Inferred or derived",
+  "Biometric","Health","Genetic","Racial or ethnic origin","Political opinions","Religious or philosophical beliefs","Trade union membership","Sex life or sexual orientation",
+  "Criminal convictions or offences"];
+/* Art 9(1) special categories. Biometric data is within Art 9 only where it is
+   processed to uniquely identify a person; the copy says so. */
+var ART9_CATS = ["Biometric","Health","Genetic","Racial or ethnic origin","Political opinions","Religious or philosophical beliefs","Trade union membership","Sex life or sexual orientation"];
+var ART10_CATS = ["Criminal convictions or offences"];
+/* Not special categories. "Data of a highly personal nature" under WP248
+   criterion 4. National ID numbers are governed by Art 87, not Art 9. */
+var PERSONAL_CATS = ["Financial / payment","Government-issued ID","Precise location","Communications content"];
+var SENSITIVE_CATS = ART9_CATS.concat(ART10_CATS);
+function catsIn(list){ return (val("cats") || []).filter(function(c){ return list.indexOf(c) > -1; }); }
 var SUBS = ["Customers","Employees","Job applicants","Children under 18","Persons with a guardian","Vendor and partner staff","Website or app visitors","Members of the public"];
 
 var NOTICE = [
@@ -1097,8 +1140,10 @@ function residualOf(r){
   var inh = r.l * r.s;
   var cov = riskCoverage(r);
   if(r.ov) return {inh:inh, lRes:r.l, score:null, band:Number(r.ov), cov:cov, forced:true};
-  var lRes = Math.max(1, Math.round(r.l * (1 - 0.5 * cov.ratio)));
-  var score = lRes * r.s;
+  /* Continuous, not rounded: with rounding, two of six controls often changed
+     nothing (likelihood 2 stayed 2). Now it falls to 1.67 and the score moves. */
+  var lRes = Math.max(1, r.l * (1 - 0.5 * cov.ratio));
+  var score = Math.round(lRes * r.s * 10) / 10;
   return {inh:inh, lRes:lRes, score:score, band:bandOf(score), cov:cov, forced:false};
 }
 function maxResidualBand(){
@@ -1128,6 +1173,124 @@ function doneCount(){
   var n = 0;
   for(var i = 0; i < STEPS.length; i++) if(stepComplete(i)) n++;
   return n;
+}
+
+function fmtScore(x){
+  if(x === null || x === undefined) return "set";
+  return Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1);
+}
+var DECISION = {proceed:"Proceed", conditions:"Proceed subject to conditions", consult:"Consult before proceeding", stop:"Do not proceed"};
+
+/* ---------------- India sector layer ----------------
+   A checklist, not a citation. Written without the source instruments in this
+   project and not checked against them; the page says so wherever it shows. */
+var SECTORS = {
+  banking: {t:"Banking and lending", items:[
+    "Prevention of Money-laundering Act 2002, s 12, with the PML (Maintenance of Records) Rules 2005: transaction records kept for five years from the transaction, and identity records for five years after the business relationship ends or the account is closed, whichever is later.",
+    "RBI Master Direction on Know Your Customer 2016: KYC records preserved for the PMLA periods and produced to competent authorities on request.",
+    "This is retention required by law, so it displaces erasure under s 8(7) for as long as it runs. Record it as the retention trigger below."]},
+  payments: {t:"Payment systems", items:[
+    "RBI direction on storage of payment system data, 6 April 2018: the entire data relating to payment systems run by a system provider must be stored in systems located only in India.",
+    "RBI FAQs, 2019: data may be processed abroad, but must then be deleted there and brought back to India within one business day or 24 hours of payment processing, whichever is earlier.",
+    "Payment system operators are reporting entities under the PMLA, so the five year record retention in its s 12 also applies.",
+    "s 16(2) of the DPDP Act preserves these stricter localisation rules whatever the permissive default in s 16(1)."]},
+  securities: {t:"Securities markets", items:[
+    "SEBI registered intermediaries are reporting entities under the PMLA, so its s 12 record retention applies: five years, as for banks.",
+    "SEBI Cybersecurity and Cyber Resilience Framework 2024: baseline security, log retention and incident reporting for regulated entities, scaled by category.",
+    "Record retention under the intermediary regulations themselves varies by registration category. Check the regulations for yours."]},
+  insurance: {t:"Insurance", items:[
+    "Insurers are reporting entities under the PMLA, so its s 12 record retention applies.",
+    "IRDAI regulations on maintenance of insurance records, and its information and cyber security guidelines, add retention and security requirements. Check the current versions."]},
+  telecom: {t:"Telecommunications", items:[
+    "Licence conditions issued by the Department of Telecommunications require retention of commercial and call detail records and certain logs for the period the licence sets, extended to two years by amendment in 2021. Check your licence.",
+    "The Telecommunications Act 2023 and the rules under it may add obligations as they are notified."]}
+};
+
+/* ---------------- pre-export check ----------------
+   Two lists: questions left unanswered, and answers that contradict each other.
+   Nothing unanswered is ever printed as if it were an answer. */
+function preflight(){
+  var miss = [], con = [];
+  function m(sec, text){ miss.push({sec:sec, text:text}); }
+  function c(sec, text){ con.push({sec:sec, text:text}); }
+  var D = val("rDPDP"), G = val("rGDPR"), ctl = val("controls") || [], ev = val("evidence") || {};
+  function on(k){ return has(ctl, k); }
+
+  if(!txt("title")) m(0, "Name of the assessment");
+  if(!txt("entity")) m(0, "Data Fiduciary or Controller");
+  if(!txt("assessor")) m(0, "Assessor");
+
+  if(D && val("sdf") === "unsure") m(1, "Whether the entity is notified as a Significant Data Fiduciary");
+
+  if(!txt("descr")) m(2, "Systematic description of the processing");
+  if(!txt("purpose")) m(2, "The specified purpose");
+  if(!(val("cats") || []).length) m(2, "Categories of personal data");
+  if(!(val("subs") || []).length) m(2, "Categories of principals or subjects");
+  if(!val("processors")) m(2, "Whether a Data Processor is engaged");
+  if(val("processors") === "yes" && !val("pcontract")) m(2, "Whether a contract is in place with each processor");
+  if(val("processors") === "yes" && !txt("pnames")) m(2, "Who the processors and sub-processors are");
+  if(!txt("retention")) m(2, "Retention period and erasure trigger");
+  if(D && !val("thirdsched")) m(2, "Whether the Third Schedule applies");
+  if(D && !val("sector")) m(2, "Sector rules in India (choose None of these if none apply)");
+  if(!val("xborder")) m(2, "Whether data is transferred across borders");
+  if(val("xborder") === "yes" && !txt("xmech")) m(2, "The transfer mechanism");
+
+  if(D){
+    if(!val("basis")) m(3, "DPDP ground for processing");
+    if(val("basis") === "s7" && !val("s7clause")) m(3, "Which s 7 legitimate use applies");
+    if(!(val("notice") || []).length) m(3, "Which s 5 notice items are present");
+    if(val("basis") === "consent" && !(val("consent") || []).length) m(3, "Which s 6 consent requirements are met");
+  }
+  if(G){
+    if(!val("gbasis")) m(3, "Article 6(1) lawful basis");
+    if((catsIn(ART9_CATS).length || catsIn(ART10_CATS).length) && !txt("gart9")) m(3, "Art 9(2) condition for the special category data marked in section 3");
+  }
+  if(!val("darkpat")) m(3, "Whether the consent interface nudges toward acceptance");
+
+  if(!txt("nec")) m(4, "Why the processing is necessary");
+  if(!txt("alt")) m(4, "Alternatives considered and rejected");
+  if(!txt("minim")) m(4, "Data minimisation applied");
+  if(!txt("expect")) m(4, "Whether the principal would reasonably expect this use");
+
+  if(!S.risks.length) m(5, "Risks to the data principal");
+
+  var inPlace = applicableControls().filter(function(x){ return on(x[0]); });
+  if(!inPlace.length) m(6, "Measures in place");
+  var noEv = inPlace.filter(function(x){ return !(ev[x[0]] || "").trim(); });
+  if(noEv.length) m(6, "Evidence for " + noEv.length + " of " + inPlace.length + " measures recorded as in place");
+
+  if((G || (D && val("sdf") === "yes")) && !txt("dpoAdvice")) m(7, "Advice of the Data Protection Officer");
+  if(G && !txt("subjectViews")) m(7, "Views of data subjects, or why they were not sought");
+  if(!val("decision")) m(7, "Outcome of the assessment");
+  var acts = val("actions") || [];
+  if(val("decision") === "conditions" && !acts.filter(function(a){ return (a.what || "").trim(); }).length) m(7, "The conditions, entered as action rows");
+  acts.forEach(function(a, i){
+    if(!(a.what || "").trim()) return;
+    if(!(a.owner || "").trim()) m(7, "Owner for action " + (i + 1));
+    if(!a.due) m(7, "Due date for action " + (i + 1));
+  });
+  if(!txt("signName")) m(7, "Approved by");
+
+  var pctl = on("pcontract") || on("art28");
+  if(val("processors") === "yes" && (val("pcontract") === "no" || val("pcontract") === "partial") && pctl)
+    c(2, "Section 3 records the processor contract as " + (val("pcontract") === "no" ? "not in place" : "only partly in place") + ", but section 7 ticks a processor contract control as in place.");
+  if(val("processors") === "no" && pctl)
+    c(6, "Section 3 records that no processor is engaged, but section 7 ticks a processor contract control.");
+  if(G && val("xborder") === "no" && on("chv"))
+    c(6, "Section 3 records no cross-border transfer, but section 7 ticks a Chapter V transfer tool.");
+  if(G && val("xborder") === "yes" && !on("chv"))
+    c(6, "Section 3 records a cross-border transfer, but no Chapter V transfer tool is ticked in section 7.");
+  if(G && (catsIn(ART9_CATS).length || catsIn(PERSONAL_CATS).length) && !has(val("wp"), "sens"))
+    c(1, "Section 3 marks special category or highly personal data, but WP248 criterion 4 is not ticked in section 2.");
+  if(D && has(val("subs"), "Children under 18") && !on("vpc"))
+    c(6, "Children are among the principals, but verifiable parental consent under s 9(1) is not ticked.");
+  if(D && val("sdf") === "yes" && !on("dpo"))
+    c(6, "The entity is recorded as a notified Significant Data Fiduciary, but no Data Protection Officer under s 10(2)(a) is ticked.");
+  if(val("darkpat") === "yes" && has(val("consent"), "free"))
+    c(3, "The consent interface is recorded as nudging toward acceptance, yet consent is recorded as free and unambiguous.");
+  if(G && val("decision") === "proceed" && maxResidualBand() >= 3)
+    c(7, "The outcome is Proceed while a residual risk is High or above, which engages Art 36(1) prior consultation.");
+  return {missing:miss, contra:con};
 }
 </script>
 
@@ -1177,7 +1340,7 @@ function fMulti(k, label, opts, cite, hint){
   var cur = val(k) || [];
   return fld('<span class="lbl" id="lb-' + k + '">' + esc(label) + '</span><div class="tiles" role="group" aria-labelledby="lb-' + k + '">' +
     opts.map(function(o, i){
-      var sens = SENSITIVE_CATS.indexOf(o) > -1 ? " sens" : "";
+      var sens = SENSITIVE_CATS.indexOf(o) > -1 ? " sens" : (PERSONAL_CATS.indexOf(o) > -1 ? " hp" : "");
       return '<button type="button" class="tile' + sens + '" id="f-' + k + '-' + i + '" data-chip="' + k + '" data-v="' + esc(o) + '"' +
         ' aria-pressed="' + (has(cur, o) ? "true" : "false") + '">' + esc(o) + '</button>';
     }).join("") + '</div>' + help(cite, hint));
@@ -1187,11 +1350,20 @@ function fChecks(bank, k, label, cite, hint){
   var gid = "lb-" + k + "-" + (bank[0] ? bank[0][0] : "g");
   return fld((label ? '<span class="lbl" id="' + gid + '">' + esc(label) + '</span>' : "") +
     '<div class="checks" role="group"' + (label ? ' aria-labelledby="' + gid + '"' : ' aria-label="Measures"') + '>' + bank.map(function(r){
-      return '<button type="button" class="ck" id="f-' + k + '-' + r[0] + '" data-ck="' + k + '" data-v="' + r[0] + '"' +
-        ' aria-pressed="' + (has(cur, r[0]) ? "true" : "false") + '">' +
+      var on = has(cur, r[0]);
+      var row = '<div class="ckrow">' +
+        '<button type="button" class="ck" id="f-' + k + '-' + r[0] + '" data-ck="' + k + '" data-v="' + r[0] + '"' +
+        ' aria-pressed="' + (on ? "true" : "false") + '">' +
         '<span class="box">' + ic("check") + '</span>' +
-        '<span class="tx">' + esc(r[1]) + '</span>' +
-        '<span class="ct cite">' + esc(r[2]) + '</span></button>';
+        '<span class="tx">' + esc(r[1]) + '</span></button>' +
+        '<span class="ct cite">' + esc(r[2]) + '</span>';
+      if(k === "controls" && on){
+        var ev = (val("evidence") || {})[r[0]] || "";
+        row += '<div class="evid"><label class="lbl" for="ev-' + r[0] + '">Evidence that this is in place</label>' +
+          '<input type="text" id="ev-' + r[0] + '" name="ev-' + r[0] + '" autocomplete="off" data-ev="' + r[0] + '" value="' + esc(ev) + '"' +
+          ' placeholder="Policy, contract clause, ticket or audit reference"></div>';
+      }
+      return row + '</div>';
     }).join("") + '</div>' + help(cite, hint));
 }
 function grp(title, body){ return '<div class="grp"><p class="grp-t">' + esc(title) + '</p>' + body + '</div>'; }
@@ -1300,7 +1472,6 @@ function vThreshold(){
 }
 
 function vDescribe(){
-  var sens = (val("cats") || []).filter(function(c){ return SENSITIVE_CATS.indexOf(c) > -1; });
   var kids = has(val("subs"), "Children under 18");
   var h = grp("Nature and purpose",
     fArea("descr", "Systematic description of the processing operations", "What happens to the data, step by step, from collection to erasure.",
@@ -1308,15 +1479,27 @@ function vDescribe(){
     fArea("purpose", "The specified purpose", "Stated as it is stated to the principal.", "s 2(za); s 6(1)"));
 
   h += grp("Data and subjects",
-    fMulti("cats", "Categories of personal data", CATS, "Art 30(1)(c)", "Categories carrying heightened sensitivity are marked.") +
+    fMulti("cats", "Categories of personal data", CATS, "Art 30(1)(c)", "An orange mark is an Art 9 special category or Art 10 offence data. An amber mark is data of a highly personal nature, which is not a special category.") +
     fMulti("subs", "Categories of principals or subjects", SUBS, "Art 30(1)(c)") +
     '<div class="two">' + fld(tIn("volume", "Approximate volume", "4.2 million principals")) +
     fld(tIn("source", "Source of the data", "Collected directly at onboarding")) + '</div>');
 
-  if(sens.length){
-    h += notif("Sensitivity diverges",
-      "You have marked " + sens.length + " categor" + (sens.length === 1 ? "y" : "ies") + " of heightened sensitivity: <b>" + esc(sens.join("; ")) +
-      "</b>. Under the GDPR these engage the Art 9 prohibition, or Art 10 for offence data, and may make Art 35(3)(b) bite of their own force. <b>The DPDP Act has no special category regime whatever.</b> Sensitivity enters only through the s 10(1)(a) factor and through what counts as reasonable under the r 6 safeguards.");
+  var a9 = catsIn(ART9_CATS), a10 = catsIn(ART10_CATS), hp = catsIn(PERSONAL_CATS);
+  if(a9.length || a10.length || hp.length){
+    var body = "";
+    if(a9.length){
+      body += "<b>Special categories under Art 9(1):</b> " + esc(a9.join("; ")) + ". Processing is prohibited unless an Art 9(2) condition applies, which section 4 asks you to record, and large scale processing is a named trigger in Art 35(3)(b)." +
+        (a9.indexOf("Biometric") > -1 ? " Biometric data is a special category only where it is processed to uniquely identify a person, as with a face match against an ID photograph." : "") + " ";
+    }
+    if(a10.length){
+      body += "<b>Offence data under Art 10:</b> processing only under the control of official authority or where authorised by law with appropriate safeguards. ";
+    }
+    if(hp.length){
+      body += "<b>Highly personal, but not special categories:</b> " + esc(hp.join("; ")) + ". These do not engage the Art 9 prohibition. They count as data of a highly personal nature under WP248 criterion 4, which feeds the two criteria rule of thumb." +
+        (hp.indexOf("Government-issued ID") > -1 ? " National identification numbers have their own provision: Art 87 lets Member States set the conditions for processing them." : "") + " ";
+    }
+    body += "<b>The DPDP Act has no special category regime at all.</b> Under it, sensitivity enters only through the s 10(1)(a) factor and through what counts as reasonable under the r 6 safeguards.";
+    h += notif("Sensitivity, as each regime treats it", body);
   }
   if(kids){
     h += notif("Children, s 9",
@@ -1331,6 +1514,17 @@ function vDescribe(){
         [["yes", "Yes, in place"], ["partial", "Partly"], ["no", "No"]], "s 8(2); r 6(1)(f); Art 28(3)",
         "A fiduciary may involve a processor only under a valid contract, and r 6(1)(f) requires that contract to carry the obligation of reasonable security safeguards.") : "") +
     fArea("recipients", "Recipients and disclosures", "Who else receives the data, and on what footing.", "Art 30(1)(d)"));
+
+  if(val("rDPDP")){
+    var sec = SECTORS[val("sector")];
+    h += grp("Sector rules in India",
+      fPick("sector", "Which sector does this activity sit in?",
+        [["none", "None of these"], ["banking", "Banking or lending (RBI)"], ["payments", "Payment systems (RBI)"],
+         ["securities", "Securities (SEBI)"], ["insurance", "Insurance (IRDAI)"], ["telecom", "Telecom (DoT)"]],
+        "s 16(2); s 8(7)", "Sector law can override the DPDP defaults on how long data is kept and where it may be stored.") +
+      (sec ? notif(sec.t, "<ul style=\"margin:4px 0 0;padding-left:18px\">" + sec.items.map(function(x){ return "<li style=\"margin-bottom:6px\">" + x + "</li>"; }).join("") + "</ul>" +
+        "<p style=\"margin-top:8px\"><b>Checklist, not a citation.</b> These sector rules were written without the source instruments in this project and have not been checked against them. Verify each against the current text before relying on it.</p>") : ""));
+  }
 
   h += grp("Retention",
     fArea("retention", "Retention period and the trigger for erasure", "How long, measured from what, and what causes deletion.",
@@ -1387,8 +1581,10 @@ function vBasis(){
       (val("gbasis") === "f" ?
         notif("Balancing test",
           "Article 6(1)(f) requires a documented balancing of your legitimate interests against the interests and fundamental rights of the data subject. Record it with this assessment, and note that it has <b>no DPDP counterpart</b>. The same processing cannot be justified by balancing on the Indian side.") : "") +
-      fArea("gart9", "Article 9 condition, where special categories are processed", "Which Art 9(2) condition is relied on, and why it fits.",
-        "Art 9(2)", "Leave blank if no special category data is processed."));
+      (catsIn(ART9_CATS).length || catsIn(ART10_CATS).length ?
+        fArea("gart9", "Article 9(2) condition relied on", "Which Art 9(2) condition applies, and why it fits. For offence data, the Art 10 authority.",
+          "Art 9(2)", "Required: section 3 marks " + esc(catsIn(ART9_CATS).concat(catsIn(ART10_CATS)).join("; ")) + ".")
+        : '<p class="help">No special category or offence data is marked in section 3, so no Art 9(2) condition is needed.</p>'));
   }
   h += grp("Interface design",
     fPick("darkpat", "Does any part of the consent interface nudge toward acceptance?",
@@ -1438,7 +1634,7 @@ function vRisks(){
         THEMES.map(function(t){ return '<option value="' + t[0] + '"' + (r.theme === t[0] ? " selected" : "") + '>' + esc(t[1]) + '</option>'; }).join("") +
         '</select>' +
         '<span class="f">L<b>' + r.l + '</b> S<b>' + r.s + '</b> = <b>' + (r.l * r.s) + '</b></span>' +
-        '<span class="f">residual <b>' + (res.forced ? "set" : res.score) + '</b></span>' +
+        '<span class="f">residual <b>' + fmtScore(res.score) + '</b></span>' +
         '<span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span>' +
         (cov.orphan ? "" : '<span class="f">' + cov.n + "/" + cov.d + ' mapped</span>') +
         '</div>' +
@@ -1509,7 +1705,7 @@ function vOutcome(){
   S.risks.forEach(function(r, i){
     var res = residualOf(r);
     h += '<tr><td>' + esc(r.name) + '</td><td style="font-size:12px;color:var(--ink-subtle)">' + esc(THEME_NAME[r.theme] || "-") + '</td>' +
-      '<td class="n">' + res.inh + '</td><td class="n">' + (res.score === null ? "set" : res.score) + '</td>' +
+      '<td class="n">' + res.inh + '</td><td class="n">' + fmtScore(res.score) + '</td>' +
       '<td><span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span></td>' +
       '<td><select data-risk="' + i + '" data-rf="ov" aria-label="Override band for risk ' + (i + 1) + '" style="width:auto;font-size:12px;padding:5px 30px 5px 10px;background-position:calc(100% - 16px) 13px,calc(100% - 11px) 13px">' +
       '<option value=""' + (!r.ov ? " selected" : "") + '>auto</option>' +
@@ -1533,16 +1729,38 @@ function vOutcome(){
       "The Act and the Rules provide no equivalent of Art 36. Nothing requires a fiduciary carrying an unmitigated high residual risk to approach the Data Protection Board before it begins processing, and the Board has no ex ante clearance function. What r 13(2) requires instead is retrospective: the person carrying out the assessment and audit must furnish to the Board a report containing significant observations. A residual position at this level belongs in those observations.");
   }
 
+  if(val("rGDPR") || (val("rDPDP") && val("sdf") === "yes")){
+    h += grp("Consultation",
+      fArea("dpoAdvice", "Advice of the Data Protection Officer", "What the DPO advised, and whether the advice was followed. If it was not, why not.",
+        "Art 35(2)", "Under the DPDP Act only a Significant Data Fiduciary must have a DPO (s 10(2)(a)), and the Act does not require the DPO's advice on the assessment. GDPR does.") +
+      (val("rGDPR") ? fArea("subjectViews", "Views of data subjects or their representatives", "Whose views were sought, how, and what changed as a result. If they were not sought, record why.",
+        "Art 35(9)", "Where appropriate, Art 35(9) requires the controller to seek them.") : ""));
+  }
+
+  var acts = val("actions") || [];
   h += grp("Outcome",
     fPick("decision", "Where the assessment lands",
       [["proceed", "Proceed"], ["conditions", "Proceed subject to conditions"], ["consult", "Consult before proceeding"], ["stop", "Do not proceed"]],
       "Art 35(7)(d)") +
-    fArea("conditions", "Conditions, actions and owners", "One line per action: what, who owns it, by when.", "Art 35(7)(d)"));
+    fld('<span class="lbl" id="lb-actions">Actions, owners and dates</span>' +
+      (acts.length ? '<div class="acthead" aria-hidden="true"><span>Action</span><span>Owner</span><span>Due</span><span></span></div>' : "") +
+      '<div role="group" aria-labelledby="lb-actions">' + acts.map(function(a, i){
+        return '<div class="actrow">' +
+          '<input type="text" id="act-' + i + '-what" data-acti="' + i + '" data-actf="what" value="' + esc(a.what || "") + '" placeholder="What will be done" aria-label="Action ' + (i + 1) + '" autocomplete="off">' +
+          '<input type="text" id="act-' + i + '-owner" data-acti="' + i + '" data-actf="owner" value="' + esc(a.owner || "") + '" placeholder="Owner" aria-label="Owner of action ' + (i + 1) + '" autocomplete="off">' +
+          '<input type="date" id="act-' + i + '-due" data-acti="' + i + '" data-actf="due" value="' + esc(a.due || "") + '" aria-label="Due date of action ' + (i + 1) + '">' +
+          '<button type="button" class="icon-btn" data-actdel="' + i + '" aria-label="Remove action ' + (i + 1) + '" title="Remove">' + ic("close") + '</button></div>';
+      }).join("") + '</div>' +
+      '<p style="margin-top:8px"><button type="button" class="btn btn-tertiary" data-act="addaction" id="addActionBtn">Add an action ' + ic("add") + '</button></p>' +
+      help("Art 35(7)(d)", "The measures envisaged to address the risks. Each one needs an owner and a date, and they lead the summary page of the report.")) +
+    fArea("conditions", "Reasoning for the outcome", "Why the assessment lands where it does, and anything an action row does not capture.", "Art 35(7)(d)"));
 
   h += grp("Sign-off",
     '<div class="two">' + fld(tIn("signName", "Approved by", "Name")) + fld(tIn("signRole", "Designation", "Data Protection Officer")) + '</div>' +
     '<div class="two">' + fld(dIn("signDate", "Date of approval")) + fld(dIn("nextDate", "Next scheduled review")) + '</div>' +
     '<p class="help"><span class="cite">r 13(1)</span> &middot; A notified Significant Data Fiduciary must repeat the assessment and the audit once in every period of twelve months from the date on which it was notified.</p>');
+
+  h += '<div class="grp"><p class="grp-t">Before you export</p>' + renderPreflight() + '</div>';
 
   h += '<div class="grp"><p class="grp-t">Report</p><div class="exp noprint">' +
     '<button type="button" class="btn btn-primary" id="btnPdf">Download .pdf ' + ic("download") + '</button>' +
@@ -1553,6 +1771,39 @@ function vOutcome(){
     '</div><p class="savenote noprint" id="saveNote"></p>' +
     '<div class="report" id="reportPreview"></div></div>';
   return h;
+}
+
+function preflightInner(){
+  var pf = preflight(), items = [];
+  pf.contra.forEach(function(x){
+    items.push('<li><span class="kind c">Contradiction</span><span>' + esc(x.text) + '</span><button type="button" class="go" data-jump="' + x.sec + '">Go to section ' + (x.sec + 1) + '</button></li>');
+  });
+  pf.missing.forEach(function(x){
+    items.push('<li><span class="kind m">Unanswered</span><span>' + esc(x.text) + '</span><button type="button" class="go" data-jump="' + x.sec + '">Go to section ' + (x.sec + 1) + '</button></li>');
+  });
+  if(!items.length){
+    return '<div class="pre ok"><div class="pre-h">' + ic("check_circle") + 'Nothing unanswered, and no contradictions found.</div></div>';
+  }
+  return '<div class="pre"><div class="pre-h">' + ic("rule") +
+    pf.contra.length + " contradiction" + (pf.contra.length === 1 ? "" : "s") + ", " +
+    pf.missing.length + " unanswered</div><ul>" + items.join("") + "</ul></div>" +
+    '<p class="help">Both lists also print on the summary page of the report, so nothing is left out silently.</p>';
+}
+function renderPreflight(){ return '<div id="preflight">' + preflightInner() + '</div>'; }
+
+/* After typing, refresh the parts that summarise state without rebuilding the
+   document, so focus and caret position are never disturbed. */
+var liveTimer = null;
+function liveRefresh(){
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(function(){
+    var pf = $("#preflight");
+    if(pf){ pf.innerHTML = preflightInner(); linkifyProvisions(pf); }
+    var pv = $("#reportPreview");
+    if(pv) pv.innerHTML = renderHTML(buildReport());
+    renderRail();
+    linkifyProvisions($("#railIn"));
+  }, 350);
 }
 
 var VIEWS = {setup:vSetup, threshold:vThreshold, describe:vDescribe, basis:vBasis,
@@ -1585,6 +1836,11 @@ function renderRail(){
     '</span> <span style="color:var(--ink-subtle)">of ' + app.length + '</span></p>' +
     '<div class="meter"><i style="width:' + pct + '%"></i></div>' +
     '<p class="dn">Counted per theme where it matters. This is the overall figure.</p></div>';
+
+  var pf = preflight(), np = pf.contra.length + pf.missing.length;
+  h += det(pf.contra.length ? "req" : (pf.missing.length ? "adv" : "no"), "Open points",
+    np ? pf.contra.length + " contradiction" + (pf.contra.length === 1 ? "" : "s") + ", " + pf.missing.length + " unanswered" : "None",
+    np ? "Listed in full in section 8, above the export buttons." : "Ready to export.");
 
   var mb = maxResidualBand();
   if(S.risks.length){
@@ -1711,18 +1967,32 @@ function addRisk(){
 
 /* ---------------- events ---------------- */
 
+function setAction(t){
+  var i = Number(t.dataset.acti), f = t.dataset.actf, acts = S.v.actions || (S.v.actions = []);
+  if(!acts[i]) return;
+  acts[i][f] = t.value;
+  save(); liveRefresh();
+}
 document.addEventListener("input", function(e){
   var t = e.target;
-  if(!t || !t.dataset || !t.dataset.k) return;
+  if(!t || !t.dataset) return;
+  if(t.dataset.ev){
+    var ev = S.v.evidence || (S.v.evidence = {});
+    ev[t.dataset.ev] = t.value;
+    save(); liveRefresh(); return;
+  }
+  if(t.dataset.acti !== undefined){ setAction(t); return; }
+  if(!t.dataset.k) return;
   if(t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && t.type === "text")){
     S.v[t.dataset.k] = t.value;
-    save(); renderSide(); renderRail();
+    save(); renderSide(); liveRefresh();
   }
 });
 
 document.addEventListener("change", function(e){
   var t = e.target;
   if(!t || !t.dataset) return;
+  if(t.dataset.acti !== undefined){ setAction(t); return; }
   if(t.dataset.k && (t.tagName === "SELECT" || t.type === "date")){
     S.v[t.dataset.k] = t.value; save(); refresh(); return;
   }
@@ -1735,7 +2005,7 @@ document.addEventListener("change", function(e){
 document.addEventListener("click", function(e){
   var tg = e.target;
   if(tg && (tg.tagName === "SELECT" || tg.tagName === "INPUT" || tg.tagName === "TEXTAREA")) return;
-  var t = tg.closest ? tg.closest("[data-radio],[data-bool],[data-chip],[data-ck],[data-cell],[data-rsel],[data-rdel],[data-act],[data-jump],button") : null;
+  var t = tg.closest ? tg.closest("[data-radio],[data-bool],[data-chip],[data-ck],[data-cell],[data-rsel],[data-rdel],[data-actdel],[data-act],[data-jump],button") : null;
   if(!t) return;
   var d = t.dataset || {}, fid = t.id || null;
 
@@ -1768,6 +2038,16 @@ document.addEventListener("click", function(e){
   }
   if(d.act === "seed"){ seedRegister(); save(); refresh(); toast("Ten standard risks loaded. Edit or delete freely."); return; }
   if(d.act === "addrisk"){ addRisk(); return; }
+  if(d.act === "addaction"){
+    var acts = S.v.actions || (S.v.actions = []);
+    acts.push({what:"", owner:"", due:""});
+    save(); refresh("act-" + (acts.length - 1) + "-what");
+    return;
+  }
+  if(d.actdel !== undefined){
+    (S.v.actions || []).splice(Number(d.actdel), 1);
+    save(); refresh(); return;
+  }
 
   switch(t.id){
     case "startBtn": case "startBtn2":
@@ -2120,6 +2400,13 @@ P("wp", "WP248 §9", "Criterion: barring a right or service", "Processing that i
    no such thing as a chip that opens an empty popover.
    ========================================================================== */
 
+P("gdpr", "Art 35(9)", "Views of data subjects",
+  "Where appropriate, the controller must seek the views of data subjects or their representatives on the intended processing, without prejudice to the protection of commercial or public interests or the security of processing operations.",
+  "If they were not sought, record why. An assessment silent on the point reads as one that never asked.");
+P("gdpr", "Art 87", "National identification numbers",
+  "Member States may determine the specific conditions for processing a national identification number or any other identifier of general application. Where they do, it may be used only under appropriate safeguards for the rights and freedoms of the data subject.",
+  "A national ID number is not an Art 9 special category. It counts as highly personal data under WP248 criterion 4.");
+
 /* Spelled-out forms used in running prose. Only capitalised, unambiguous forms
    are aliased: the page also says "section 6" meaning its own sixth section,
    and that must never be mistaken for a statutory reference. */
@@ -2161,7 +2448,10 @@ var PROV_RE = (function(){
   return new RegExp("\\b(?:" + esc.join("|") + ")(?![\\w(])", "g");
 })();
 
-var PROV_SKIP = {SCRIPT:1, STYLE:1, TEXTAREA:1, INPUT:1, SELECT:1, OPTION:1, BUTTON:0};
+/* BUTTON is skipped: a chip inside a checkbox or tile would nest one button in
+   another, which is invalid and swallows the click meant for the outer control.
+   Every such row carries its own citation chip beside the button instead. */
+var PROV_SKIP = {SCRIPT:1, STYLE:1, TEXTAREA:1, INPUT:1, SELECT:1, OPTION:1, BUTTON:1};
 
 function linkifyProvisions(root){
   if(!root) return;
@@ -2328,6 +2618,41 @@ function buildReport(){
   n.push({t:"meta", text:or(txt("entity"), "Entity not stated") + " · " + (regimes.join(" and ") || "no regime selected") + " · " + today});
   n.push({t:"advisory", title:ADVISORY_HEAD, text:ADVISORY_TEXT});
 
+  /* One page that answers what a reader needs first: where it landed, the
+     worst residual, whether Art 36 bites, and who owns what by when. */
+  var dv = dpdpVerdict(), gv = gdprVerdict(), pf = preflight(), mbS = maxResidualBand(), worst = null;
+  S.risks.forEach(function(r){
+    var rs = residualOf(r);
+    if(!worst || rs.band > worst.res.band || (rs.band === worst.res.band && (rs.score || 0) > (worst.res.score || 0))) worst = {r:r, res:rs};
+  });
+  n.push({t:"h", text:"Summary"});
+  n.push({t:"kv", rows:[
+    ["Outcome", DECISION[val("decision")] || "Not answered"],
+    ["Highest residual risk", worst ? BAND_NAME[worst.res.band] + " (" + fmtScore(worst.res.score) + "): " + worst.r.name : "No risks recorded"],
+    ["Art 36 prior consultation", !val("rGDPR") ? "GDPR not in scope" : (mbS >= 3 ? "Engaged. A residual risk is High or above, so the supervisory authority must be consulted before processing." : "Not engaged on these figures")],
+    ["DPDP assessment duty", dv ? dv.stamp : "DPDP not in scope"],
+    ["GDPR assessment duty", gv ? gv.stamp : "GDPR not in scope"],
+    ["Approved by", or(txt("signName"), "Not answered") + (txt("signRole") ? ", " + txt("signRole") : "")],
+    ["Next scheduled review", or(txt("nextDate"), "Not set")]
+  ]});
+  var actsS = (val("actions") || []).filter(function(a){ return (a.what || "").trim(); });
+  n.push({t:"h3", text:"Actions, owners and dates"});
+  if(actsS.length){
+    n.push({t:"table", head:["#", "Action", "Owner", "Due"], rows:actsS.map(function(a, i){
+      return [String(i + 1), a.what.trim(), (a.owner || "").trim() || "Not assigned", a.due || "No date"];
+    })});
+  } else {
+    n.push({t:"p", text:"No actions recorded."});
+  }
+  if(pf.contra.length){
+    n.push({t:"h3", text:"Contradictions to resolve (" + pf.contra.length + ")"});
+    n.push({t:"list", items:pf.contra.map(function(x){ return x.text + "  [section " + (x.sec + 1) + "]"; })});
+  }
+  n.push({t:"p", text:pf.missing.length
+    ? pf.missing.length + " question" + (pf.missing.length === 1 ? " is" : "s are") + " unanswered. They are listed under Open points at the end of this report."
+    : "Every question in the assessment has been answered."});
+  n.push({t:"pagebreak"});
+
   n.push({t:"h", text:"1. Assessment details"});
   n.push({t:"kv", rows:[
     ["Data Fiduciary / Controller", or(txt("entity"), "-")],
@@ -2338,7 +2663,6 @@ function buildReport(){
   ]});
 
   n.push({t:"h", text:"2. Threshold"});
-  var dv = dpdpVerdict(), gv = gdprVerdict();
   if(dv){
     n.push({t:"verdict", title:dv.who + " - " + dv.stamp + ". " + dv.title, text:dv.body});
     n.push({t:"kv", rows:[["Notified as a Significant Data Fiduciary", YN[val("sdf")] || "-"]]});
@@ -2362,47 +2686,73 @@ function buildReport(){
     ["Categories of principals", listOr("subs", "-")],
     ["Volume", or(txt("volume"), "-")],
     ["Source", or(txt("source"), "-")],
-    ["Processors engaged", YN[val("processors")] || "-"],
-    ["Processor contract in place", val("processors") === "yes" ? (YN[val("pcontract")] || "-") : "n/a"],
-    ["Recipients", or(txt("recipients"), "-")],
-    ["Retention and erasure trigger", or(txt("retention"), "-")],
-    ["Third Schedule three-year erasure", YN[val("thirdsched")] || "-"],
-    ["Cross-border transfer", YN[val("xborder")] || "-"],
-    ["Destinations", val("xborder") === "yes" ? or(txt("xdest"), "-") : "n/a"],
-    ["Transfer mechanism", val("xborder") === "yes" ? or(txt("xmech"), "-") : "n/a"]
+    ["Processors engaged", YN[val("processors")] || "Not answered"],
+    ["Processor contract in place", val("processors") === "yes" ? (YN[val("pcontract")] || "Not answered") : "Not applicable"],
+    ["Recipients", or(txt("recipients"), "Not stated")],
+    ["Retention and erasure trigger", or(txt("retention"), "Not stated")],
+    ["Third Schedule three-year erasure", val("rDPDP") ? (YN[val("thirdsched")] || "Not answered") : "Not applicable"],
+    ["Cross-border transfer", YN[val("xborder")] || "Not answered"],
+    ["Destinations", val("xborder") === "yes" ? or(txt("xdest"), "Not stated") : "Not applicable"],
+    ["Transfer mechanism", val("xborder") === "yes" ? or(txt("xmech"), "Not stated") : "Not applicable"]
   ]});
+  if(val("rDPDP")){
+    var secR = SECTORS[val("sector")];
+    n.push({t:"kv", rows:[["Sector rules in India", val("sector") === "none" ? "None of the listed sectors" : (secR ? secR.t : "Not answered")]]});
+    if(secR){
+      n.push({t:"h3", text:"Sector rules flagged: " + secR.t});
+      n.push({t:"list", items:secR.items});
+      n.push({t:"p", text:"These sector rules are a checklist written without the source instruments and not checked against them. Each should be verified against the current text."});
+    }
+  }
   if(txt("pnames")){ n.push({t:"h3", text:"Processors and sub-processors"}); n.push({t:"p", text:txt("pnames")}); }
 
-  var sens = (val("cats") || []).filter(function(c){ return SENSITIVE_CATS.indexOf(c) > -1; });
-  if(sens.length && val("rDPDP") && val("rGDPR")){
-    n.push({t:"verdict", title:"Divergence - special categories",
-      text:"Categories of heightened sensitivity are processed (" + sens.join("; ") + "). Under the GDPR these engage the Art 9 prohibition, or Art 10 for offence data, and may trigger Art 35(3)(b) of their own force. The DPDP Act contains no special-category regime: sensitivity enters only through the s 10(1)(a) factor and through what is reasonable under the r 6 safeguards."});
+  var a9R = catsIn(ART9_CATS), a10R = catsIn(ART10_CATS), hpR = catsIn(PERSONAL_CATS);
+  if(val("rGDPR") && (a9R.length || a10R.length || hpR.length)){
+    var sTxt = "";
+    if(a9R.length) sTxt += "Special categories under Art 9(1): " + a9R.join("; ") + ". Processing is prohibited unless an Art 9(2) condition applies, and large scale processing is a named trigger in Art 35(3)(b)." +
+      (a9R.indexOf("Biometric") > -1 ? " Biometric data is a special category only where processed to uniquely identify a person." : "") + " ";
+    if(a10R.length) sTxt += "Offence data under Art 10: processing only under official authority or where authorised by law with appropriate safeguards. ";
+    if(hpR.length) sTxt += "Highly personal data that is not a special category: " + hpR.join("; ") + ". It does not engage the Art 9 prohibition, but counts under WP248 criterion 4." +
+      (hpR.indexOf("Government-issued ID") > -1 ? " National identification numbers are governed by Art 87, under which Member States set the conditions for their use." : "") + " ";
+    if(val("rDPDP")) sTxt += "The DPDP Act has no special category regime: sensitivity enters only through the s 10(1)(a) factor and through what is reasonable under the r 6 safeguards.";
+    n.push({t:"verdict", title:"Sensitivity of the data marked", text:sTxt.trim()});
   }
 
   n.push({t:"h", text:"4. Lawful basis, notice and consent"});
   if(val("rDPDP")){
     n.push({t:"kv", rows:[
-      ["DPDP ground", val("basis") === "consent" ? "Consent (s 6)" : val("basis") === "s7" ? "Legitimate use (s 7)" : "-"],
-      ["Legitimate use clause", val("basis") === "s7" ? (val("s7clause") ? "s 7(" + val("s7clause") + ")" : "not selected") : "n/a"]
+      ["DPDP ground", val("basis") === "consent" ? "Consent (s 6)" : val("basis") === "s7" ? "Legitimate use (s 7)" : "Not answered"],
+      ["Legitimate use clause", val("basis") === "s7" ? (val("s7clause") ? "s 7(" + val("s7clause") + ")" : "Not answered") : "Not applicable"]
     ]});
+    var pN = labelsFor(NOTICE, "notice");
     n.push({t:"h3", text:"Notice - items present (s 5)"});
-    n.push({t:"list", items:labelsFor(NOTICE, "notice").length ? labelsFor(NOTICE, "notice") : ["None recorded."]});
-    var mN = missingFor(NOTICE, "notice");
-    if(mN.length){ n.push({t:"h3", text:"Notice - items not recorded as present"}); n.push({t:"list", items:mN}); }
+    if(pN.length){
+      n.push({t:"list", items:pN});
+      var mN = missingFor(NOTICE, "notice");
+      if(mN.length){ n.push({t:"h3", text:"Notice - items not recorded as present"}); n.push({t:"list", items:mN}); }
+    } else {
+      n.push({t:"p", text:"Not answered. No notice item is recorded either way; see Open points."});
+    }
     if(val("basis") === "consent"){
+      var pC = labelsFor(CONSENT, "consent");
       n.push({t:"h3", text:"Consent - requirements met (s 6)"});
-      n.push({t:"list", items:labelsFor(CONSENT, "consent").length ? labelsFor(CONSENT, "consent") : ["None recorded."]});
-      var mC = missingFor(CONSENT, "consent");
-      if(mC.length){ n.push({t:"h3", text:"Consent - requirements not recorded as met"}); n.push({t:"list", items:mC}); }
+      if(pC.length){
+        n.push({t:"list", items:pC});
+        var mC = missingFor(CONSENT, "consent");
+        if(mC.length){ n.push({t:"h3", text:"Consent - requirements not recorded as met"}); n.push({t:"list", items:mC}); }
+      } else {
+        n.push({t:"p", text:"Not answered. No consent requirement is recorded either way; see Open points."});
+      }
     }
   }
   if(val("rGDPR")){
+    var specR = catsIn(ART9_CATS).concat(catsIn(ART10_CATS));
     n.push({t:"kv", rows:[
-      ["Article 6(1) basis", val("gbasis") ? "Art 6(1)(" + val("gbasis") + ")" : "-"],
-      ["Article 9(2) condition", or(txt("gart9"), "n/a")]
+      ["Article 6(1) basis", val("gbasis") ? "Art 6(1)(" + val("gbasis") + ")" : "Not answered"],
+      ["Article 9(2) condition", specR.length ? or(txt("gart9"), "Not stated, but required: special category data is marked (" + specR.join("; ") + ")") : "Not applicable: no special category or offence data is marked"]
     ]});
   }
-  n.push({t:"kv", rows:[["Consent interface nudges toward acceptance", YN[val("darkpat")] || "-"]]});
+  n.push({t:"kv", rows:[["Consent interface nudges toward acceptance", YN[val("darkpat")] || "Not answered"]]});
 
   n.push({t:"h", text:"5. Necessity and proportionality"});
   n.push({t:"h3", text:"Necessity"});
@@ -2422,7 +2772,7 @@ function buildReport(){
         var res = residualOf(r);
         return [String(i + 1), r.name, THEME_NAME[r.theme] || "-", String(r.l), String(r.s), String(res.inh),
                 res.cov.orphan ? "none in scope" : (res.cov.n + " of " + res.cov.d),
-                res.score === null ? "set manually" : String(res.score), BAND_NAME[res.band]];
+                res.score === null ? "set manually" : fmtScore(res.score), BAND_NAME[res.band]];
       })});
   } else {
     n.push({t:"p", text:"No risks recorded."});
@@ -2430,10 +2780,17 @@ function buildReport(){
 
   n.push({t:"h", text:"7. Measures and safeguards"});
   var app = applicableControls(), selC = val("controls") || [];
-  var inPlace = app.filter(function(c){ return has(selC, c[0]); }).map(function(c){ return c[1] + "  [" + c[2] + "]"; });
+  var evR = val("evidence") || {};
+  var inPlaceC = app.filter(function(c){ return has(selC, c[0]); });
   var notIn = app.filter(function(c){ return !has(selC, c[0]); }).map(function(c){ return c[1] + "  [" + c[2] + "]"; });
-  n.push({t:"h3", text:"In place (" + inPlace.length + " of " + app.length + ")"});
-  n.push({t:"list", items:inPlace.length ? inPlace : ["None recorded."]});
+  n.push({t:"h3", text:"In place (" + inPlaceC.length + " of " + app.length + ")"});
+  if(inPlaceC.length){
+    n.push({t:"table", head:["Measure", "Provision", "Evidence"], rows:inPlaceC.map(function(c){
+      return [c[1], c[2], (evR[c[0]] || "").trim() || "Not recorded"];
+    })});
+  } else {
+    n.push({t:"p", text:"No measure is recorded as in place."});
+  }
   n.push({t:"h3", text:"Not in place"});
   n.push({t:"list", items:notIn.length ? notIn : ["None - every applicable measure is recorded as in place."]});
 
@@ -2452,20 +2809,32 @@ function buildReport(){
     n.push({t:"verdict", title:"DPDP - no prior-consultation equivalent exists",
       text:"Neither the Act nor the Rules require a fiduciary carrying an unmitigated high residual risk to approach the Data Protection Board before processing, and the Board has no ex ante clearance function. Rule 13(2) instead requires that significant observations from the assessment and audit be furnished to the Board. This residual position belongs in those observations."});
   }
+  if(val("rGDPR") || (val("rDPDP") && val("sdf") === "yes")){
+    n.push({t:"h3", text:"Consultation"});
+    var consRows = [["Advice of the Data Protection Officer (Art 35(2))", or(txt("dpoAdvice"), "Not recorded")]];
+    if(val("rGDPR")) consRows.push(["Views of data subjects (Art 35(9))", or(txt("subjectViews"), "Not recorded")]);
+    n.push({t:"kv", rows:consRows});
+  }
   n.push({t:"kv", rows:[
-    ["Outcome", {proceed:"Proceed", conditions:"Proceed subject to conditions", consult:"Consult before proceeding", stop:"Do not proceed"}[val("decision")] || "-"],
-    ["Approved by", or(txt("signName"), "-") + (txt("signRole") ? ", " + txt("signRole") : "")],
-    ["Date of approval", or(txt("signDate"), "-")],
-    ["Next scheduled review", or(txt("nextDate"), "-")]
+    ["Outcome", DECISION[val("decision")] || "Not answered"],
+    ["Approved by", or(txt("signName"), "Not answered") + (txt("signRole") ? ", " + txt("signRole") : "")],
+    ["Date of approval", or(txt("signDate"), "Not recorded")],
+    ["Next scheduled review", or(txt("nextDate"), "Not set")]
   ]});
-  if(txt("conditions")){ n.push({t:"h3", text:"Conditions, actions and owners"}); n.push({t:"p", text:txt("conditions")}); }
+  n.push({t:"p", text:actsS.length ? "Actions, owners and dates are set out on the summary page." : "No actions are recorded."});
+  if(txt("conditions")){ n.push({t:"h3", text:"Reasoning for the outcome"}); n.push({t:"p", text:txt("conditions")}); }
+
+  if(pf.missing.length){
+    n.push({t:"h", text:"Open points"});
+    n.push({t:"p", text:"Questions left unanswered at the time this report was produced. Each is a gap in the record, not a negative answer."});
+    n.push({t:"list", items:pf.missing.map(function(x){ return x.text + "  [section " + (x.sec + 1) + "]"; })});
+  }
 
   n.push({t:"h", text:"Method note"});
-  n.push({t:"p", text:"Inherent risk is likelihood × severity on a 1-4 scale each, banded 1-4 Low, 5-8 Moderate, 9-12 High, 13-16 Severe. Each risk is tagged to a theme, and each control is mapped to the themes it addresses. Residual risk is computed by reducing likelihood alone, by up to one half in proportion to the share of mapped controls recorded as in place; severity is never reduced, on the view that a control makes a harm less likely without making it smaller. A risk to which no in-scope control is mapped is reported as unmitigated rather than scored as covered. Bands may be overridden by hand, and any override is noted as set manually."});
+  n.push({t:"p", text:"Inherent risk is likelihood × severity on a 1-4 scale each, banded 1-4 Low, 5-8 Moderate, 9-12 High, 13-16 Severe. Each risk is tagged to a theme, and each control is mapped to the themes it addresses. Residual risk is computed by reducing likelihood alone, continuously and by up to one half in proportion to the share of mapped controls recorded as in place, with a floor of 1; severity is never reduced, on the view that a control makes a harm less likely without making it smaller. Because the reduction is continuous, any added mapped control moves the residual score, shown to one decimal: a likelihood of 2 with two of six mapped controls in place becomes 1.67, so a severity 3 risk moves from 6 to 5. The band moves only when the score crosses 4, 8 or 12. A risk to which no in-scope control is mapped is reported as unmitigated rather than scored as covered. Bands may be overridden by hand, and any override is noted as set manually."});
 
   n.push({t:"h", text:"Sources"});
   n.push({t:"p", text:"Provisions cited are taken from the Digital Personal Data Protection Act 2023 (22 of 2023), the Digital Personal Data Protection Rules 2025 as gazetted in G.S.R. 846(E) of 13 November 2025, Regulation (EU) 2016/679, and WP248 rev.01. Sections 3-17 of the Act are enforced from 13 May 2027 by notification G.S.R. 843(E) of 13 November 2025; rules 3, 5-16, 22 and 23 of the Rules come into force on the same date under r 1(4) of G.S.R. 846(E)."});
-  n.push({t:"advisory", title:ADVISORY_HEAD, text:ADVISORY_TEXT});
   return n;
 }
 
@@ -2482,6 +2851,7 @@ function renderHTML(n){
       return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>';
     }).join("") + '</dl>';
     if(d.t === "list") return '<ul>' + d.items.map(function(i){ return '<li>' + esc(i) + '</li>'; }).join("") + '</ul>';
+    if(d.t === "pagebreak") return '<hr style="border:0;border-top:2px dashed var(--hairline);margin:32px 0 8px">';
     if(d.t === "advisory") return '<div class="adv"><b>' + esc(d.title) + '</b><span>' + esc(d.text) + '</span></div>';
     if(d.t === "verdict") return '<div class="vq"><b>' + esc(d.title) + '</b><span>' + esc(d.text) + '</span></div>';
     if(d.t === "table") return '<div style="overflow-x:auto"><table><thead><tr>' +
@@ -2501,6 +2871,7 @@ function renderMD(n){
     if(d.t === "p") return d.text + "\n";
     if(d.t === "kv") return d.rows.map(function(r){ return "- **" + r[0] + ":** " + r[1]; }).join("\n") + "\n";
     if(d.t === "list") return d.items.map(function(i){ return "- " + i; }).join("\n") + "\n";
+    if(d.t === "pagebreak") return "\n---\n";
     if(d.t === "advisory") return "\n---\n\n> **" + d.title.toUpperCase() + "**\n>\n> " + d.text + "\n\n---\n";
     if(d.t === "verdict") return "> **" + d.title + "**\n>\n> " + d.text.replace(/\n/g, "\n> ") + "\n";
     if(d.t === "table"){
@@ -2622,6 +2993,7 @@ function renderDOCX(n){
     else if(d.t === "p") b += wP(d.text, {size:20});
     else if(d.t === "kv") b += wTable(["Item", "Detail"], d.rows.map(function(r){ return [r[0], String(r[1])]; }));
     else if(d.t === "list") d.items.forEach(function(i){ b += wP(i, {size:20, bullet:true, spaceAfter:40}); });
+    else if(d.t === "pagebreak") b += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
     else if(d.t === "advisory") b += wBox(d.title, d.text);
     else if(d.t === "verdict") b += wP(d.title, {bold:true, size:20, border:true, spaceAfter:40}) + wP(d.text, {size:19, border:true, spaceAfter:160});
     else if(d.t === "table") b += wTable(d.head, d.rows);
@@ -2722,9 +3094,14 @@ function renderPDF(nodes){
       font:"helvetica", fontSize:7.6, cellPadding:1.7, overflow:"linebreak",
       textColor:INK, lineColor:LINE, lineWidth:0.1, valign:"top"
     };
-    var colStyles = kv
-      ? {0:{cellWidth:44, textColor:INK3}, 1:{cellWidth:"auto"}}
-      : {0:{cellWidth:7, halign:"right"}, 1:{cellWidth:"auto"}};
+    /* Column widths follow the table's shape. A 7 mm first column is right for
+       a "#" index and catastrophic for anything else: it once squeezed the
+       evidence table's measure names to a few letters a line, over nine pages. */
+    var colStyles;
+    if(kv) colStyles = {0:{cellWidth:44, textColor:INK3}, 1:{cellWidth:"auto"}};
+    else if(head[0] === "#") colStyles = {0:{cellWidth:7, halign:"right"}, 1:{cellWidth:"auto"}};
+    else if(head[0] === "Measure") colStyles = {0:{cellWidth:88}, 1:{cellWidth:30, textColor:INK3}, 2:{cellWidth:"auto"}};
+    else colStyles = {};
     doc.autoTable({
       head:[head.map(pdfSan)],
       body:rows.map(function(r){ return r.map(pdfSan); }),
@@ -2743,6 +3120,8 @@ function renderPDF(nodes){
       para(d.text, 19, "bold", INK, 0, 1);
     } else if(d.t === "meta"){
       para(d.text, 8.6, "italic", INK3, 0, 3);
+    } else if(d.t === "pagebreak"){
+      doc.addPage(); y = M;
     } else if(d.t === "advisory"){
       advisoryBox(d.title, d.text);
     } else if(d.t === "h"){
