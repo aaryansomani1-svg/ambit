@@ -477,6 +477,13 @@ input::placeholder,textarea::placeholder{color:var(--ink-subtle)}
 .tag.b4{color:var(--b4);background:var(--b4bg)}
 
 /* ---------- risk matrix ---------- */
+.riskwrap{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:900px){
+  /* One column: matrix first, then the register. An inline two-column rule here
+     used to crush the register to 0px wide on phones. */
+  .riskwrap{grid-template-columns:minmax(0,1fr);gap:24px}
+  .mx{max-width:440px;margin-inline:auto}
+}
 .mx{display:grid;grid-template-columns:16px 22px minmax(0,1fr);grid-template-rows:auto 20px 18px;gap:4px}
 .mx-y{grid-column:1;grid-row:1;writing-mode:vertical-rl;transform:rotate(180deg);display:grid;place-items:center;font-size:11px;letter-spacing:.32px;color:var(--ink-subtle)}
 .mx-yt{grid-column:2;grid-row:1;display:grid;grid-template-rows:repeat(4,1fr);gap:2px}
@@ -494,7 +501,7 @@ input::placeholder,textarea::placeholder{color:var(--ink-subtle)}
 .mk-l{stroke:var(--ink-muted);stroke-width:1;stroke-dasharray:2 2}
 .mk-i{fill:var(--ink);stroke:var(--canvas);stroke-width:1.5}
 .mk-r{fill:var(--canvas);stroke:var(--ink);stroke-width:2}
-.mk-t{font-family:var(--mono);font-size:9px;font-weight:600;fill:var(--canvas);text-anchor:middle;dominant-baseline:central}
+.mk-t{font-family:var(--mono);font-size:11.5px;font-weight:600;fill:var(--canvas);text-anchor:middle;dominant-baseline:central}
 .mk-on .mk-i{fill:var(--primary)} .mk-on .mk-r{stroke:var(--primary)}
 .mk-na{opacity:.22}
 .tag.na{color:var(--ink-subtle);background:var(--surface-1)}
@@ -534,6 +541,22 @@ table.dt th,table.dt td{padding:12px 16px;text-align:left;border-bottom:1px soli
 table.dt thead th{background:var(--surface-1);font-size:12px;letter-spacing:.32px;font-weight:600;white-space:nowrap}
 table.dt tbody tr:last-child td{border-bottom:0}
 table.dt td.n,table.dt th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Wide data tables become stacked rows on a phone: each cell carries its own
+   label, so nothing has to scroll sideways to be read. */
+@media (max-width:672px){
+  table.dt.stack{min-width:0}
+  table.dt.stack thead{display:none}
+  table.dt.stack,table.dt.stack tbody{display:block}
+  table.dt.stack tr{display:block;padding:12px 14px;border-bottom:1px solid var(--hairline)}
+  table.dt.stack tbody tr:last-child{border-bottom:0}
+  table.dt.stack td{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:baseline;border:0;padding:4px 0;text-align:left;white-space:normal}
+  table.dt.stack td::before{content:attr(data-label);font-size:12px;letter-spacing:.32px;color:var(--ink-subtle);font-family:var(--sans)}
+  table.dt.stack td.n{text-align:left}
+  table.dt.stack td:first-child{display:block;font-weight:600;padding-bottom:6px}
+  table.dt.stack td:first-child::before{content:none}
+  table.dt.stack td select{width:100%}
+}
 
 /* ---------- report ---------- */
 .exp{display:flex;flex-wrap:wrap;gap:1px;background:var(--hairline);border:1px solid var(--hairline)}
@@ -1412,7 +1435,7 @@ function matrixMarks(){
   S.risks.forEach(function(r, i){
     var k = r.l + ":" + r.s, n = groups[k], j = (seen[k] = (seen[k] || 0) + 1) - 1, dx = 0, dy = 0;
     if(n > 1){
-      var a = (Math.PI * 2 * j) / n - Math.PI / 2, rad = n <= 3 ? 14 : 18;
+      var a = (Math.PI * 2 * j) / n - Math.PI / 2, rad = n <= 3 ? 17 : 21;
       dx = Math.cos(a) * rad; dy = Math.sin(a) * rad * .8;
     }
     var res = residualOf(r);
@@ -1440,9 +1463,9 @@ function renderMatrix(live){
     svg += '<g class="' + (live && m.i === S.sel ? "mk-on" : "") + (m.na ? " mk-na" : "") + '"><title>' + esc((m.i + 1) + ". " + m.r.name + (m.na ? " (" + m.na + ")" : "")) + '</title>';
     if(m.moved){
       svg += '<line class="mk-l" x1="' + m.x.toFixed(1) + '" y1="' + m.y.toFixed(1) + '" x2="' + m.rx.toFixed(1) + '" y2="' + m.y.toFixed(1) + '"/>' +
-             '<circle class="mk-r" cx="' + m.rx.toFixed(1) + '" cy="' + m.y.toFixed(1) + '" r="8"/>';
+             '<circle class="mk-r" cx="' + m.rx.toFixed(1) + '" cy="' + m.y.toFixed(1) + '" r="10"/>';
     }
-    svg += '<circle class="mk-i" cx="' + m.x.toFixed(1) + '" cy="' + m.y.toFixed(1) + '" r="9.5"/>' +
+    svg += '<circle class="mk-i" cx="' + m.x.toFixed(1) + '" cy="' + m.y.toFixed(1) + '" r="12"/>' +
            '<text class="mk-t" x="' + m.x.toFixed(1) + '" y="' + m.y.toFixed(1) + '">' + (m.i + 1) + '</text></g>';
   });
   svg += '</svg>';
@@ -1453,7 +1476,7 @@ function renderMatrix(live){
     '<div class="mx-xt"><span>1</span><span>2</span><span>3</span><span>4</span></div>' +
     '<div class="mx-x">Likelihood</div></div>' +
     '<div class="mx-key"><i><span class="sw f"></span>Inherent</i><i><span class="sw o"></span>Residual</i>' +
-    (live ? '<i>Select a risk, then click a cell.</i>' : "") + '</div>';
+    (live ? '<i>Select a risk in the list, then tap a cell.</i>' : "") + '</div>';
 }
 </script>
 
@@ -1652,7 +1675,7 @@ function vRisks(){
   var h = notif("Whose risk",
     "Every entry is a risk of harm <b>to the data principal</b>. Regulatory penalty is a consequence of those harms and is never itself a row in the register. Art 35(7)(c) asks for risks to the rights and freedoms of data subjects, and s 10(1)(b) asks about risk to the rights of Data Principals. Neither asks what it would cost you.");
 
-  h += '<div style="display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:32px;align-items:start" class="riskwrap">' +
+  h += '<div class="riskwrap">' +
     '<div>' + renderMatrix(true) + '</div><div>';
 
   if(!S.risks.length){
@@ -1711,7 +1734,7 @@ function vControls(){
   var h = notif("Only what is true today",
     "Tick a measure only where it is in place now. A control on a roadmap does not reduce a residual position, and an assessment that assumes it will reads as a plan rather than a record. Anything not yet in place belongs in the conditions in section 8.");
 
-  h += '<div class="grp"><p class="grp-t">Coverage by theme</p><div class="tw"><table class="dt">' +
+  h += '<div class="grp"><p class="grp-t">Coverage by theme</p><div class="tw"><table class="dt stack">' +
     '<thead><tr><th>Theme</th><th class="n">In place</th><th class="n">In scope</th><th>Status</th></tr></thead><tbody>' +
     THEMES.map(function(t){
       var mapped = mappedControls(t[0]);
@@ -1719,8 +1742,8 @@ function vControls(){
       var n = mapped.filter(function(c){ return has(sel, c[0]); }).length;
       var band = n === 0 ? "b4" : (n === mapped.length ? "b1" : "b2");
       var word = n === 0 ? "None" : (n === mapped.length ? "Complete" : "Partial");
-      return '<tr><td>' + esc(t[1]) + '</td><td class="n">' + n + '</td><td class="n">' + mapped.length +
-        '</td><td><span class="tag ' + band + '">' + word + '</span></td></tr>';
+      return '<tr><td data-label="Theme">' + esc(t[1]) + '</td><td class="n" data-label="In place">' + n + '</td><td class="n" data-label="In scope">' + mapped.length +
+        '</td><td data-label="Status"><span class="tag ' + band + '">' + word + '</span></td></tr>';
     }).join("") + '</tbody></table></div>' +
     '<p class="help">Coverage is counted per theme, not in aggregate, because only the controls mapped to a risk reduce that risk. Overall, ' +
     ticked + ' of ' + app.length + ' measures in scope are recorded as in place (' + pct + ' per cent).</p></div>';
@@ -1737,16 +1760,16 @@ function vControls(){
 
 function vOutcome(){
   var mb = maxResidualBand(), orph = orphanRisks();
-  var h = '<div class="grp"><p class="grp-t">Residual position</p><div class="tw"><table class="dt"><thead><tr>' +
+  var h = '<div class="grp"><p class="grp-t">Residual position</p><div class="tw"><table class="dt stack"><thead><tr>' +
     '<th style="width:36%">Risk</th><th>Theme</th><th class="n">Inherent</th><th class="n">Residual</th><th>Band</th><th>Override</th>' +
     '</tr></thead><tbody>';
   if(!S.risks.length) h += '<tr><td colspan="6" style="color:var(--ink-subtle)">No risks recorded. Go back to section 6.</td></tr>';
   S.risks.forEach(function(r, i){
     var res = residualOf(r);
-    h += '<tr><td>' + esc(r.name) + '</td><td style="font-size:12px;color:var(--ink-subtle)">' + esc(THEME_NAME[r.theme] || "-") + '</td>' +
-      '<td class="n">' + res.inh + '</td><td class="n">' + (riskNA(r) ? "-" : fmtScore(res.score)) + '</td>' +
-      '<td>' + (riskNA(r) ? '<span class="tag na" title="' + esc(riskNA(r)) + '">Not applicable</span>' : '<span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span>') + '</td>' +
-      '<td><select data-risk="' + i + '" data-rf="ov" aria-label="Override band for risk ' + (i + 1) + '" style="width:auto;font-size:12px;padding:5px 30px 5px 10px;background-position:calc(100% - 16px) 13px,calc(100% - 11px) 13px">' +
+    h += '<tr><td data-label="Risk">' + esc(r.name) + '</td><td data-label="Theme" style="font-size:12px;color:var(--ink-subtle)">' + esc(THEME_NAME[r.theme] || "-") + '</td>' +
+      '<td class="n" data-label="Inherent">' + res.inh + '</td><td class="n" data-label="Residual">' + (riskNA(r) ? "-" : fmtScore(res.score)) + '</td>' +
+      '<td data-label="Band">' + (riskNA(r) ? '<span class="tag na" title="' + esc(riskNA(r)) + '">Not applicable</span>' : '<span class="tag b' + res.band + '">' + BAND_NAME[res.band] + '</span>') + '</td>' +
+      '<td data-label="Override"><select data-risk="' + i + '" data-rf="ov" aria-label="Override band for risk ' + (i + 1) + '" style="width:auto;font-size:12px;padding:5px 30px 5px 10px;background-position:calc(100% - 16px) 13px,calc(100% - 11px) 13px">' +
       '<option value=""' + (!r.ov ? " selected" : "") + '>auto</option>' +
       [1, 2, 3, 4].map(function(b){
         return '<option value="' + b + '"' + (String(r.ov) === String(b) ? " selected" : "") + '>' + BAND_NAME[b] + '</option>';
